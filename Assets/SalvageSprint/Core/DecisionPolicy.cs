@@ -8,6 +8,11 @@ namespace SalvageSprint.Core
     {
         public const string Label = "Part 1 starter: nearest candidate";
 
+        private static bool IsEligible(Candidate candidate)
+        {
+            return candidate.Available && (candidate.Visible || candidate.Remembered);
+        }
+
         public static AgentFacts Infer(Observation observation)
         {
             if (observation.Carrying)
@@ -18,7 +23,7 @@ namespace SalvageSprint.Core
             foreach (Candidate candidate in observation.Candidates)
             {
                 // Deliberately naive: ignores Visible, Remembered and Blocked.
-                if (candidate.Available && candidate.DistanceSquared < distance)
+                if (IsEligible(candidate) && candidate.DistanceSquared < distance)
                 { nearest = candidate.Id; distance = candidate.DistanceSquared; }
             }
             return new AgentFacts(false, nearest, false);
