@@ -33,31 +33,48 @@ namespace SalvageSprint
             actor = GetComponent<RaceActor>();
             navigator = GetComponent<Navigator>();
             sensor = GetComponent<PickupSensor>();
+
             CurrentDecision = new Decision(TaskKind.Explore, -1, "Waiting for first observation");
         }
 
         private void Update()
         {
-            if (!match.IsRunning) { navigator.Cancel(); return; }
+            if (!match.IsRunning)
+            {
+                navigator.Cancel();
+                return;
+            }
+
             TravelStatus travel = navigator.Poll();
-            if (Time.time < nextDecision) return;
+
+            if (Time.time < nextDecision) 
+                return;
+
             nextDecision = Time.time + decisionInterval;
+
             if (travel == TravelStatus.Failed && rememberedId >= 0)
             {
                 failedUntil[rememberedId] = Time.time + 6;
+
                 LastFailure = "Route failed for pickup " + rememberedId + "; ignore for 6 seconds";
             }
-            if (rememberedId >= 0 && !match.IsAvailable(rememberedId)) rememberedId = -1;
-            if (CurrentDecision.Task == TaskKind.Explore
-                && (travel == TravelStatus.Arrived || travel == TravelStatus.Failed))
+
+            if (rememberedId >= 0 && !match.IsAvailable(rememberedId))
+                rememberedId = -1;
+
+            if (CurrentDecision.Task == TaskKind.Explore && (travel == TravelStatus.Arrived || travel == TravelStatus.Failed))
                 surveyIndex = (surveyIndex + 1) % surveyPoints.Length;
 
             LastObservation = sensor.Capture(actor, rememberedId, IsBlocked);
+
             CurrentFacts = DecisionPolicy.Infer(LastObservation);
             Decision next = DecisionPolicy.Choose(CurrentFacts);
+
             bool changed = next.Task != CurrentDecision.Task || next.TargetId != CurrentDecision.TargetId;
+
             CurrentDecision = next;
             DecisionCount++;
+
             if (changed && logDecisionChanges)
                 Debug.Log($"[{Time.time:F1}] {next.Task} target={next.TargetId}: {next.Reason}", this);
 
@@ -66,14 +83,21 @@ namespace SalvageSprint
                 rememberedId = -1;
                 navigator.Request(-2, actor.DepotPosition);
             }
+
             else if (next.Task == TaskKind.Collect)
             {
                 rememberedId = next.TargetId;
+
                 SalvagePickup target = match.GetPickup(next.TargetId);
-                if (target != null && match.IsAvailable(next.TargetId))
+
+                if (target != null && match.IsAvailable(next.TargetId)) 
+                {
                     navigator.Request(next.TargetId, target.transform.position);
+                }
+
                 else navigator.Cancel();
             }
+
             else
             {
                 rememberedId = -1;
