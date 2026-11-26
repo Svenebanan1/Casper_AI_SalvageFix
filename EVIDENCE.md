@@ -5,7 +5,7 @@ Keep this short. Bullet points, a small table and one diagram or code trace are 
 Name: Casper Aaröe
 Exact Unity version: 6000.3.26f1
 Checkpoint commit / repository: 
-Current stage and anything unfinished: Stage 1
+Current stage and anything unfinished: Stage 2 done. Stages 3-5 not started.
 
 ## Initial prediction
 
@@ -37,18 +37,26 @@ What I saw in the F1 panel: [fill in]
 - With a stopping distance above about 1.7, the rival stops too far from the scrap. It thinks it has arrived, but it never picks the scrap up because pickup needs 1.1 m. I think it still works at 1.6 because it slides a bit when it brakes.
 - When the player took the scrap the rival was going for, the rival stopped. The code should make it forget that scrap and pick another one or explore. [fill in what the panel said]
 
+### Stage 2: respect perception and memory
+
+- Changed rule (`DecisionPolicy.IsEligible`): a pickup only counts if it is `Available && (Visible || Remembered)`. Distance is only compared after this check, so a hidden pickup can no longer win just by being nearer.
+- Before: the loop only checked `Available`, so the rival could choose a hidden pickup it had never seen, as if it could see through walls.
+- Accepted: available + hidden + remembered -> eligible. The rival saw it earlier and selected it, so it is only acting on what it already knew.
+- Rejected: available + hidden + not remembered -> not eligible. The rival has never seen it, so choosing it would use information it does not have.
+- Memory: `PickupSensor.Capture` marks a pickup as remembered when its ID is the rival's current target (`remembered = item.Id == rememberedId`). The sensor only keeps one target, not a history. In the starter the rival could select an unknown hidden pickup, and the next tick would mark it remembered, so Memory did not prove it had been seen. Now a pickup can only be selected after it was visible, so the memory is legitimate.
+
 ## Scenario record
 
 | Scenario | Predicted result | Observed result and short evidence / remaining issue |
 |---|---|---|
 | Normal loop and restart | | |
 | Carrying cargo | | |
-| Hidden / remembered pickup | | |
+| Hidden / remembered pickup | In F4 the rival should ignore the nearer hidden scrap and go for the visible one further away | After restart in F4 the rival ignored the nearer hidden scrap #[id] and went for the visible scrap #[id] further away. Panel: Visible = [n], Memory = [n], reason "[reason]". In F2 all nearby scrap is visible, so it still picks the nearest one (#10) as before. |
 | Target taken | | |
 | Unreachable target | | |
 | No usable pickup | | |
 
-Supplied test result, with any added tests identified:
+Supplied test result, with any added tests identified: [n] pass, [n] fail (expected 13 / 4). All three Stage2_ tests and both Regression_ tests pass. `Stage2_PreviouslyKnownPickupMayRemainKnownOutsideSight` already passed in the starter (its only candidate is available, so the naive rule picked it anyway). My change made `Stage2_HiddenUnknownPickupIsNotAUsableTarget` and `Stage2_VisibleAlternativeBeatsNearerHiddenPickup` pass. The remaining fails belong to later stages.
 Live walkthrough checked by / recording link if used:
 
 ## One correction and one independent check
@@ -60,5 +68,5 @@ My counterexample or experiment: prediction, observed result, and one limitation
 ## Collaboration and help
 
 People I discussed or playtested with: 
-Code, sources or substantive tools/AI assistance I used, and how I verified them: I used Claude Code (AI) to help me understand the code and to fix my Stage 1 trace and notes. I checked it by [fill in].
+Code, sources or substantive tools/AI assistance I used, and how I verified them: I used Claude Code (AI) to help me understand the code and to fix my Stage 1 trace and notes. I checked it by reading the code and running the game to see if it matched my understanding. For Stage 2, Claude Code drafted the Stage 2 text in this file; I checked it against `DecisionPolicy.cs`, `PickupSensor.Capture`, the Stage 2 tests and the F4 scene. 
 If unfinished: what works, exact reproduction steps, and the help I need:

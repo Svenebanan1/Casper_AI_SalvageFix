@@ -22,7 +22,8 @@ namespace SalvageSprint.Core
             float distance = float.PositiveInfinity;
             foreach (Candidate candidate in observation.Candidates)
             {
-                // Deliberately naive: ignores Visible, Remembered and Blocked.
+                // Stage 2: only available pickups that are visible or remembered compete on distance.
+                // Blocked is still ignored (Stage 4).
                 if (IsEligible(candidate) && candidate.DistanceSquared < distance)
                 { nearest = candidate.Id; distance = candidate.DistanceSquared; }
             }
