@@ -2,7 +2,7 @@
 
 Keep this short. Bullet points, a small table and one diagram or code trace are enough. This is your checkpoint record, not an extra report. Replace the prompts as you work.
 
-Name: Casper Aaröe
+Name: Casper AarÃ¶e
 Exact Unity version: 6000.3.26f1
 Checkpoint commit / repository: https://github.com/Svenebanan1/Casper_AI_SalvageFix (exact commit hash in my Omniway submission)
 Current stage and anything unfinished: All stages done
@@ -36,6 +36,7 @@ What I saw in the F1 panel: Travel went Pending -> Moving. Decisions kept going 
 - Speed, acceleration and angular speed change how the rival moves, not where it can go.
 - With a stopping distance above about 1.7, the rival stops too far from the scrap. It thinks it has arrived, but it never picks the scrap up because pickup needs 1.1 m. I think it still works at 1.6 because it slides a bit when it brakes.
 - When the player took the scrap the rival was going for, the rival stopped. The code should make it forget that scrap and pick another one or explore. (What the panel showed is in the F5 trace under Stage 3.)
+- Supplied navigation code I changed (commit "STAGE 2 code"): `Navigator.Request` now lets a failed route to the same goal be tried again after 1 second, because otherwise delivery could stay stuck on the same depot request forever. `Navigator` also logs why a route failed. `NavigationFeedback.Classify` now treats an unknown (infinite) remaining distance on a complete path as still Moving instead of Failed, because an unknown distance does not mean the route is impossible; the 5-second no-progress check still catches a stuck agent. The 7 infrastructure tests still pass.
 
 ### Stage 2: respect perception and memory
 
@@ -59,7 +60,7 @@ State transitions:
 - Explore -> Collect: an eligible pickup (available, and visible or remembered) is selected.
 - Collect -> Deliver: the rival picks the scrap up, so it has cargo, and cargo always goes first.
 - Deliver -> Collect or Explore: after delivery the cargo is gone. If it knows an eligible pickup it collects, otherwise it explores.
-- Collect -> another Collect target or Explore: the current target stops being usable (taken), so it is released and the nearest eligible pickup is chosen, or Explore if there is none.
+- Collect -> another Collect target or Explore: the current target stops being usable (taken, or blocked after its route failed), so it is released and the nearest eligible pickup is chosen, or Explore if there is none.
 
 F5 (target taken): the rival first chose scrap #0 with reason "New target: nearest eligible candidate", then "Keeping current target: still usable" on the next decisions. When the helper gave that scrap to the player, the rival switched to Explore, found scrap #1 and chose it with reason "New target: nearest eligible candidate". The rival did not try to go for the taken scrap #0, so it correctly released it.
 
@@ -68,6 +69,7 @@ F5 (target taken): the rival first chose scrap #0 with reason "New target: neare
 - Where `Blocked` comes from (supplied code): when a route fails, `RivalBrain.Update` sets `failedUntil[id] = Time.time + 6` and `PickupSensor.Capture` marks that pickup `Blocked`. The 6 seconds is only a wait before trying again. It does not prove the route will work later.
 - Before: `IsEligible` ignored `Blocked`, so in F6 my Stage 3 keep-target loop kept #0 even after its route failed, and the rival never went for #1.
 - Changed rule (`DecisionPolicy.isEligible`, which replaced the old `IsEligible`): a pickup only counts if it is not `Blocked` and `Available && (Visible || Remembered)`. Both loops in `Infer` use it, so a blocked pickup can't be kept or newly chosen. If every known pickup is blocked, nothing is selected and the rival explores.
+- Changed reason (`DecisionPolicy.Choose`): the Explore reason now says "No usable target (none known, or known ones blocked after a failed route): visit the next survey point". The old one said "No candidate", which was wrong when a known pickup existed but was blocked. The Collect reasons still fit, because "usable" and "eligible" now include not blocked.
 - F6 after: the rival still tries #0 first, because it can't know the route is impossible until it fails. Then #0 is blocked, so it goes for #1, picks it up, delivers it and explores.
 - Limitation: after 6 seconds #0 is no longer blocked, so the rival can try it again and fail again. It never learns that the platform is disconnected.
 - Tests: 17 pass, 0 fail.
@@ -94,6 +96,6 @@ My counterexample or experiment: prediction, observed result, and one limitation
 
 ## Collaboration and help
 
-People I discussed or playtested with: 
-Code, sources or substantive tools/AI assistance I used, and how I verified them: I used Claude Code (AI) to help me understand the code and to fix my Stage 1 trace and notes. I checked it by reading the code and running the game to see if it matched my understanding. For Stage 2, Claude Code drafted the Stage 2 text in this file; I checked it against `DecisionPolicy.cs`, `PickupSensor.Capture`, the Stage 2 tests and the F4 scene. For Stage 3, Claude Code explained the steps, gave me the code for the retained-target loop in `Infer` and the reason text in `Choose`, fixed two typos in `DecisionPolicy.cs`, ran the EditMode tests (14 pass, 3 fail) and drafted the Stage 3 text in this file. I verified it by running the game and checking the F5 scene and the Stage 3 tests. For Stage 4, Claude Code walked me through the steps, checked my change by running the supplied tests outside Unity, and drafted the Stage 4 text in this file. For Stage 5, Claude Code filled in the scenario table from my notes and the code, and ran the tie experiment outside Unity.
-If unfinished: what works, exact reproduction steps, and the help I need:
+People I discussed or playtested with: None
+Code, sources or substantive tools/AI assistance I used, and how I verified them: I used Claude Code (AI) to help me understand the code and to fix my Stage 1 trace and notes. I checked it by reading the code and running the game to see if it matched my understanding. For Stage 2, Claude Code drafted the Stage 2 text in this file; I checked it against `DecisionPolicy.cs`, `PickupSensor.Capture`, the Stage 2 tests and the F4 scene. For Stage 3, Claude Code explained the steps, gave me the code for the retained-target loop in `Infer` and the reason text in `Choose`, fixed two typos in `DecisionPolicy.cs`, ran the EditMode tests (14 pass, 3 fail) and drafted the Stage 3 text in this file. I verified it by running the game and checking the F5 scene and the Stage 3 tests. For Stage 4, Claude Code walked me through the steps, checked my change by running the supplied tests outside Unity, and drafted the Stage 4 text in this file. For Stage 5, Claude Code filled in the scenario table from my notes and the code, and ran the tie experiment outside Unity. For the final fixes, Claude Code changed the Explore reason text in `DecisionPolicy.Choose` and filled in the remaining gaps in this file.
+If unfinished: what works, exact reproduction steps, and the help I need: Nothing unfinished.

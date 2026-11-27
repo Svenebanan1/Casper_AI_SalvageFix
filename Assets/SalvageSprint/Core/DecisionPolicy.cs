@@ -24,8 +24,8 @@ namespace SalvageSprint.Core
 
             foreach (Candidate candidate in observation.Candidates)
             {
-                // Stage 4: only available pickups that are visible or remembered compete on distance.
-
+                // Only usable pickups compete on distance: available, visible or remembered,
+                // and not blocked after a failed route (Stages 2 and 4).
                 if (isEligible(observation, candidate) && candidate.DistanceSquared < distance)
                 { nearest = candidate.Id; distance = candidate.DistanceSquared; }
             }
@@ -49,7 +49,8 @@ namespace SalvageSprint.Core
                 return new Decision(TaskKind.Deliver, -1, "Cargo held: return to depot");
 
             if(!facts.HasUsableTarget)
-                return new Decision(TaskKind.Explore, -1, "No candidate: visit the next survey point");
+                return new Decision(TaskKind.Explore, -1,
+                    "No usable target (none known, or known ones blocked after a failed route): visit the next survey point");
 
             string reason = facts.RetainedTarget
                 ? "Keeping current target: still usable"
