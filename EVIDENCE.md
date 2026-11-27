@@ -4,8 +4,8 @@ Keep this short. Bullet points, a small table and one diagram or code trace are 
 
 Name: Casper Aaröe
 Exact Unity version: 6000.3.26f1
-Checkpoint commit / repository: 
-Current stage and anything unfinished: Stage 0-3 done. Stage 4 and 5 not started. 
+Checkpoint commit / repository: https://github.com/Svenebanan1/Casper_AI_SalvageFix (exact commit hash in my Omniway submission)
+Current stage and anything unfinished: All stages done
 
 ## Initial prediction
 
@@ -28,14 +28,14 @@ Scene: F2 (normal). The first thing the rival does after I press Play. It starts
 
 Explore -> Collect -> Deliver -> Collect / Explore
 
-What I saw in the F1 panel: [fill in]
+What I saw in the F1 panel: Travel went Pending -> Moving. Decisions kept going up while Requests stayed at 1, and Requests went to 2 when it switched to Deliver.
 
 ### Stage 1 experiments
 
-- The NavMesh baked on Yard Geometry decides where the rival can walk. The NavMeshAgent on the rival does the moving. When I moved a shelf and rebaked, the route [fill in].
+- The NavMesh baked on Yard Geometry decides where the rival can walk. The NavMeshAgent on the rival does the moving. When I moved a shelf and rebaked, the route then changed.
 - Speed, acceleration and angular speed change how the rival moves, not where it can go.
 - With a stopping distance above about 1.7, the rival stops too far from the scrap. It thinks it has arrived, but it never picks the scrap up because pickup needs 1.1 m. I think it still works at 1.6 because it slides a bit when it brakes.
-- When the player took the scrap the rival was going for, the rival stopped. The code should make it forget that scrap and pick another one or explore. [fill in what the panel said]
+- When the player took the scrap the rival was going for, the rival stopped. The code should make it forget that scrap and pick another one or explore. (What the panel showed is in the F5 trace under Stage 3.)
 
 ### Stage 2: respect perception and memory
 
@@ -76,24 +76,24 @@ F5 (target taken): the rival first chose scrap #0 with reason "New target: neare
 
 | Scenario | Predicted result | Observed result and short evidence / remaining issue |
 |---|---|---|
-| Normal loop and restart | In F2 the rival should go for the nearest scrap and then leave it at the depot. It does this until either the player gets 5 scrap deliverd or the rival gets 5 scraps deliverd. | In F2 the rival should go for the nearest scrap and then leave it at the depot. It does this until either the player gets 5 scrap deliverd or the rival gets 5 scraps deliverd. |
-| Carrying cargo | When carrying cargo the rival goes into the delivery phase and prioritizes leaving the scrap at depot before doing anything else | When carrying cargo the rival goes into the delivery phase and prioritizes leaving the scrap at depot before doing anything else |
-| Hidden / remembered pickup | In F4 the rival should ignore the nearer hidden scrap and go for the visible one further away | After restart in F4 the rival ignored the nearer hidden scrap #[id] and went for the visible scrap #[id] further away. Panel: Visible = [n], Memory = [n], reason "[reason]". In F2 all nearby scrap is visible, so it still picks the nearest one (#10) as before. |
+| Normal loop and restart | In F2 the rival should go for the nearest scrap and bank it at the depot, and keep doing this until someone has 5 or the 2 minutes run out. R should restart the match. | The rival collected scrap and banked it at its depot over and over until one side reached 5. R restarted the match. |
+| Carrying cargo | When carrying cargo the rival goes into the delivery phase and prioritizes leaving the scrap at depot before doing anything else | The rival went straight to its depot first (Task: Deliver, reason "Cargo held: return to depot") and only went for scrap after banking it. |
+| Hidden / remembered pickup | In F4 the rival should ignore the nearer hidden scrap and go for the visible one further away | After restart in F4 the rival ignored the nearer scrap #0 behind the test wall and went for the visible scrap #1 further away. In F2 all nearby scrap is visible, so it still picks the nearest one (#10) as before. |
 | Target taken | In F5 the rival should forget the taken scrap and pick another known scrap, or explore if it knows none | The rival was going for #0. After the helper gave it to the player, the rival switched to Explore, found new scrap #1 and collected it. Panel: Memory was 1, went to 0 when #0 was taken, and back to 1 when the rival chose #1. Reason "New target: nearest eligible candidate". |
-| Unreachable target | In F6 the rival should ignore the unreachable scrap and pick another known scrap, or explore if it knows none | The rival ignores the blocked scrap, goes for id #1 picks it up and leaves it at the depot and goes into Exploration |
-| No usable pickup | | |
+| Unreachable target | In F6 the rival should ignore the unreachable scrap and pick another known scrap, or explore if it knows none | The rival first went for #0 on the platform. The route failed, #0 was blocked for 6 seconds, and it went for #1 instead, picked it up, banked it and started exploring. |
+| No usable pickup | In F7 there is no scrap, so the rival should only explore the survey points without crashing or inventing a target, and the 20-second match should end 0-0 as a draw. | The rival explored the survey points and the match ended in a draw. |
 
-Supplied test result, with any added tests identified: 14 pass, 3 fail (expected 14 / 3 after Stage 3). All three Stage2_ tests and both Regression_ tests pass. `Stage2_PreviouslyKnownPickupMayRemainKnownOutsideSight` already passed in the starter (its only candidate is available, so the naive rule picked it anyway). My change made `Stage2_HiddenUnknownPickupIsNotAUsableTarget` and `Stage2_VisibleAlternativeBeatsNearerHiddenPickup` pass. For Stage 3, `Stage3_UsableCurrentTargetSurvivesCloserDistraction` now passes because of my change; `Stage3_UnavailableRememberedTargetIsReleased` already passed in the starter. The 3 remaining fails are the Stage 4 tests.
+Supplied test result, with any added tests identified: 17 pass, 0 fail (expected 17 / 0 after Stage 4), no tests added. All three Stage2_ tests and both Regression_ tests pass. `Stage2_PreviouslyKnownPickupMayRemainKnownOutsideSight` already passed in the starter (its only candidate is available, so the naive rule picked it anyway). My change made `Stage2_HiddenUnknownPickupIsNotAUsableTarget` and `Stage2_VisibleAlternativeBeatsNearerHiddenPickup` pass. For Stage 3, `Stage3_UsableCurrentTargetSurvivesCloserDistraction` now passes because of my change; `Stage3_UnavailableRememberedTargetIsReleased` already passed in the starter. The three Stage4_ tests now pass because of my Stage 4 change.
 Live walkthrough checked by / recording link if used:
 
 ## One correction and one independent check
 
-The original weakness and why it happened:
-What I changed and why it addresses the cause:
-My counterexample or experiment: prediction, observed result, and one limitation:
+The original weakness and why it happened: in F6 the rival kept going for #0 after its route failed, because the policy ignored `Blocked`, so the failure feedback never reached the decision.
+What I changed and why it addresses the cause: I added `Blocked` to `isEligible`. Both the keep-target loop and the nearest search use it, so a pickup whose route just failed can't be kept or chosen for 6 seconds.
+My counterexample or experiment: prediction, observed result, and one limitation: two equally near visible pickups (squared distance 4). Prediction: because the nearest search uses `<`, not `<=`, the first one in the list wins, not the lower ID. Observed (decision snapshots): list [#3, #1] chose #3, list [#1, #3] chose #1, and with #3 as the current target it kept #3 ("Keeping current target: still usable"). Limitation: a tie is decided by list order, which comes from the order of `match.Pickups`, so it is an arbitrary choice, not a smarter one like "closer to my depot". Stage 3 commitment at least stops the rival switching back and forth between the two.
 
 ## Collaboration and help
 
 People I discussed or playtested with: 
-Code, sources or substantive tools/AI assistance I used, and how I verified them: I used Claude Code (AI) to help me understand the code and to fix my Stage 1 trace and notes. I checked it by reading the code and running the game to see if it matched my understanding. For Stage 2, Claude Code drafted the Stage 2 text in this file; I checked it against `DecisionPolicy.cs`, `PickupSensor.Capture`, the Stage 2 tests and the F4 scene. For Stage 3, Claude Code explained the steps, gave me the code for the retained-target loop in `Infer` and the reason text in `Choose`, fixed two typos in `DecisionPolicy.cs`, ran the EditMode tests (14 pass, 3 fail) and drafted the Stage 3 text in this file. I verified it by running the game and checking the F5 scene and the Stage 3 tests. For Stage 4, Claude Code walked me through the steps, checked my change by running the supplied tests outside Unity, and drafted the Stage 4 text in this file.
+Code, sources or substantive tools/AI assistance I used, and how I verified them: I used Claude Code (AI) to help me understand the code and to fix my Stage 1 trace and notes. I checked it by reading the code and running the game to see if it matched my understanding. For Stage 2, Claude Code drafted the Stage 2 text in this file; I checked it against `DecisionPolicy.cs`, `PickupSensor.Capture`, the Stage 2 tests and the F4 scene. For Stage 3, Claude Code explained the steps, gave me the code for the retained-target loop in `Infer` and the reason text in `Choose`, fixed two typos in `DecisionPolicy.cs`, ran the EditMode tests (14 pass, 3 fail) and drafted the Stage 3 text in this file. I verified it by running the game and checking the F5 scene and the Stage 3 tests. For Stage 4, Claude Code walked me through the steps, checked my change by running the supplied tests outside Unity, and drafted the Stage 4 text in this file. For Stage 5, Claude Code filled in the scenario table from my notes and the code, and ran the tie experiment outside Unity.
 If unfinished: what works, exact reproduction steps, and the help I need:
