@@ -63,15 +63,24 @@ State transitions:
 
 F5 (target taken): the rival first chose scrap #0 with reason "New target: nearest eligible candidate", then "Keeping current target: still usable" on the next decisions. When the helper gave that scrap to the player, the rival switched to Explore, found scrap #1 and chose it with reason "New target: nearest eligible candidate". The rival did not try to go for the taken scrap #0, so it correctly released it.
 
+### Stage 4: recover from failed routes
+
+- Where `Blocked` comes from (supplied code): when a route fails, `RivalBrain.Update` sets `failedUntil[id] = Time.time + 6` and `PickupSensor.Capture` marks that pickup `Blocked`. The 6 seconds is only a wait before trying again. It does not prove the route will work later.
+- Before: `IsEligible` ignored `Blocked`, so in F6 my Stage 3 keep-target loop kept #0 even after its route failed, and the rival never went for #1.
+- Changed rule (`DecisionPolicy.isEligible`, which replaced the old `IsEligible`): a pickup only counts if it is not `Blocked` and `Available && (Visible || Remembered)`. Both loops in `Infer` use it, so a blocked pickup can't be kept or newly chosen. If every known pickup is blocked, nothing is selected and the rival explores.
+- F6 after: the rival still tries #0 first, because it can't know the route is impossible until it fails. Then #0 is blocked, so it goes for #1, picks it up, delivers it and explores.
+- Limitation: after 6 seconds #0 is no longer blocked, so the rival can try it again and fail again. It never learns that the platform is disconnected.
+- Tests: 17 pass, 0 fail.
+
 ## Scenario record
 
 | Scenario | Predicted result | Observed result and short evidence / remaining issue |
 |---|---|---|
-| Normal loop and restart | | |
-| Carrying cargo | | |
+| Normal loop and restart | In F2 the rival should go for the nearest scrap and then leave it at the depot. It does this until either the player gets 5 scrap deliverd or the rival gets 5 scraps deliverd. | In F2 the rival should go for the nearest scrap and then leave it at the depot. It does this until either the player gets 5 scrap deliverd or the rival gets 5 scraps deliverd. |
+| Carrying cargo | When carrying cargo the rival goes into the delivery phase and prioritizes leaving the scrap at depot before doing anything else | When carrying cargo the rival goes into the delivery phase and prioritizes leaving the scrap at depot before doing anything else |
 | Hidden / remembered pickup | In F4 the rival should ignore the nearer hidden scrap and go for the visible one further away | After restart in F4 the rival ignored the nearer hidden scrap #[id] and went for the visible scrap #[id] further away. Panel: Visible = [n], Memory = [n], reason "[reason]". In F2 all nearby scrap is visible, so it still picks the nearest one (#10) as before. |
 | Target taken | In F5 the rival should forget the taken scrap and pick another known scrap, or explore if it knows none | The rival was going for #0. After the helper gave it to the player, the rival switched to Explore, found new scrap #1 and collected it. Panel: Memory was 1, went to 0 when #0 was taken, and back to 1 when the rival chose #1. Reason "New target: nearest eligible candidate". |
-| Unreachable target | | |
+| Unreachable target | In F6 the rival should ignore the unreachable scrap and pick another known scrap, or explore if it knows none | The rival ignores the blocked scrap, goes for id #1 picks it up and leaves it at the depot and goes into Exploration |
 | No usable pickup | | |
 
 Supplied test result, with any added tests identified: 14 pass, 3 fail (expected 14 / 3 after Stage 3). All three Stage2_ tests and both Regression_ tests pass. `Stage2_PreviouslyKnownPickupMayRemainKnownOutsideSight` already passed in the starter (its only candidate is available, so the naive rule picked it anyway). My change made `Stage2_HiddenUnknownPickupIsNotAUsableTarget` and `Stage2_VisibleAlternativeBeatsNearerHiddenPickup` pass. For Stage 3, `Stage3_UsableCurrentTargetSurvivesCloserDistraction` now passes because of my change; `Stage3_UnavailableRememberedTargetIsReleased` already passed in the starter. The 3 remaining fails are the Stage 4 tests.
@@ -86,5 +95,5 @@ My counterexample or experiment: prediction, observed result, and one limitation
 ## Collaboration and help
 
 People I discussed or playtested with: 
-Code, sources or substantive tools/AI assistance I used, and how I verified them: I used Claude Code (AI) to help me understand the code and to fix my Stage 1 trace and notes. I checked it by reading the code and running the game to see if it matched my understanding. For Stage 2, Claude Code drafted the Stage 2 text in this file; I checked it against `DecisionPolicy.cs`, `PickupSensor.Capture`, the Stage 2 tests and the F4 scene. For Stage 3, Claude Code explained the steps, gave me the code for the retained-target loop in `Infer` and the reason text in `Choose`, fixed two typos in `DecisionPolicy.cs`, ran the EditMode tests (14 pass, 3 fail) and drafted the Stage 3 text in this file. I verified it by running the game and checking the F5 scene and the Stage 3 tests.
+Code, sources or substantive tools/AI assistance I used, and how I verified them: I used Claude Code (AI) to help me understand the code and to fix my Stage 1 trace and notes. I checked it by reading the code and running the game to see if it matched my understanding. For Stage 2, Claude Code drafted the Stage 2 text in this file; I checked it against `DecisionPolicy.cs`, `PickupSensor.Capture`, the Stage 2 tests and the F4 scene. For Stage 3, Claude Code explained the steps, gave me the code for the retained-target loop in `Infer` and the reason text in `Choose`, fixed two typos in `DecisionPolicy.cs`, ran the EditMode tests (14 pass, 3 fail) and drafted the Stage 3 text in this file. I verified it by running the game and checking the F5 scene and the Stage 3 tests. For Stage 4, Claude Code walked me through the steps, checked my change by running the supplied tests outside Unity, and drafted the Stage 4 text in this file.
 If unfinished: what works, exact reproduction steps, and the help I need:

@@ -8,11 +8,6 @@ namespace SalvageSprint.Core
     {
         public const string Label = "Week 1: known targets, keeps usable target";
 
-        private static bool IsEligible(Candidate candidate)
-        {
-            return candidate.Available && (candidate.Visible || candidate.Remembered);
-        }
-
         public static AgentFacts Infer(Observation observation)
         {
             if (observation.Carrying)
@@ -20,7 +15,7 @@ namespace SalvageSprint.Core
 
             foreach(Candidate candidate in observation.Candidates)
             {
-                if(candidate.Id == observation.CurrentTargetId && IsEligible(candidate))
+                if(candidate.Id == observation.CurrentTargetId && isEligible(observation, candidate))
                         return new AgentFacts(false, candidate.Id, true);
             }
 
@@ -29,12 +24,21 @@ namespace SalvageSprint.Core
 
             foreach (Candidate candidate in observation.Candidates)
             {
-                // Stage 2: only available pickups that are visible or remembered compete on distance.
-                // Blocked is still ignored (Stage 4).
-                if (IsEligible(candidate) && candidate.DistanceSquared < distance)
+                // Stage 4: only available pickups that are visible or remembered compete on distance.
+
+                if (isEligible(observation, candidate) && candidate.DistanceSquared < distance)
                 { nearest = candidate.Id; distance = candidate.DistanceSquared; }
             }
             return new AgentFacts(false, nearest, false);
+
+        }
+
+        private static bool isEligible(Observation observation, Candidate candidate)
+        {
+            if(candidate.Blocked)
+                return false;   
+
+            return candidate.Available && (candidate.Visible || candidate.Remembered);
         }
 
         public static Decision Choose(Observation observation) => Choose(Infer(observation));
